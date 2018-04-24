@@ -15,6 +15,8 @@ plot(iris$Petal.Width, iris$Petal.Length,
      xlab = 'Petal Width', ylab = 'Petal Length',
      main = "Fisher's iris data")
 ```
+$$ x = y $$
+qfdsdfsdfd $ x = y $  sfsg
 
 And nicely-formatted tables:
 
