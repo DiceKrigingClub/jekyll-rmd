@@ -33,6 +33,12 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 ## Special for David
 
 $$x=y$$
+or inline $x=y$
+$x=y$
+
+$$x=y$$
 
 or inline $x=y$
+
+$x=y$
 
