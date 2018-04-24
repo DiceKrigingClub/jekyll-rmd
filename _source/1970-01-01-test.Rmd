@@ -1,8 +1,9 @@
 ---
 title: "Test"
 author: "IRSN - Y. Richet"
-date: "24 avril 2018"
-output: html_document
+layout: post
+date:   0970-01-01 00:00:00 +0100
+categories: r jekyll
 ---
 
 ```{r setup, include=FALSE}
