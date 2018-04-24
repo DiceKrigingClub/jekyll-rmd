@@ -35,8 +35,3 @@ $$x=y$$
 
 or inline $x=y$
 
-or even using inline eval 
-```r
-y = 42
-```
-$x=$`r y`
