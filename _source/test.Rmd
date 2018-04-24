@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Test"
 author: "IRSN - Y. Richet"
 date: "24 avril 2018"
 output: html_document
@@ -39,4 +39,4 @@ or even using inline eval
 ```r
 y = 42
 ```
-$$x=`r y`$$
+$x=$`r y`
