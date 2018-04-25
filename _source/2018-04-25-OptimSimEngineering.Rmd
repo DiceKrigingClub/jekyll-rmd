@@ -8,6 +8,8 @@ categories: r jekyll
 
 Engineering objective: optimize $f$ function/simulator, with lowest $f$ evaluations as possible.
 
+
+
 ```{r,echo=F, warning=F, fig.height=4, fig.width=7}
 #f=function(x) 1-sin(.25+pi*x^.75)
 f=(function(x) 1-sin(-.20+3*pi*x^.85)+x/3+5*(x-.45)^2)
@@ -50,7 +52,7 @@ plot_f()
 i_min_f = which.min(f(xx))
 points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
 
-if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKriging",quiet = T)
+if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKriging")
 library(DiceKriging)
 k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
 make_km = function(n=10){
