@@ -6,8 +6,14 @@ date:   2018-04-25 00:00:00 +0100
 categories: r jekyll
 ---
 
-Engineering objective: optimize $f$ function/simulator, with lowest $f$ evaluations as possible.
 
+_"Efficient Global Optimization of Expensive Black-Box Functions"_
+Jones, Schonlau, Welch, Journal of Global Optimization, December 1998
+
+<hr/>
+
+
+Engineering objective: optimize $f$ function/simulator, with lowest $f$ evaluations as possible.
 
 
 ```{r,echo=F, warning=F, fig.height=4, fig.width=7}
@@ -104,7 +110,7 @@ for (p in c(3,2,1))
 
 
 
-```{r,echo=F, warning=F, fig.width=4, fig.height=3}
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
 plot_f()
 #i_min_f = which.min(f(xx))
 #points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
@@ -132,7 +138,7 @@ $$u(x) = { { min \{ f(X) \} - m(x) } \over { s(x) } }$$
 
 
 
-```{r,echo=F, warning=F, fig.width=4, fig.height=1}
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
 par(mar=c(0,1,0,1))
 
 uxx = (min(y0)-k_x$mean)/k_x$sd
@@ -149,13 +155,9 @@ polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
 
 $$\color{violet}{EI}(x) = s(x)\ \big(\ u(x)p_{\mathcal{N}}(u(x)) + d_{\mathcal{N}}(u(x))\ \big)$$
 
+<hr/>
 
-_"Efficient Global Optimization of Expensive Black-Box Functions"_- Jones, Schonlau, Welch,  
-(Journal of Global Optimization, December 1998)
-
-EGO:  
-Maximize $EI(x)$ (*), compute $f$ there, add to $X$.  
-Repeat until ...
+EGO: Maximize $EI(x)$ (*), compute $f$ there, add to $X$, ... Repeat until ...
 
 <hr/>
 
