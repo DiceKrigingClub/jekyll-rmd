@@ -1,0 +1,539 @@
+---
+title: "Optimization for (simulation) engineering"
+author: "Y. Richet"
+layout: post
+date:   2018-04-25 00:00:00 +0100
+categories: r jekyll
+---
+
+Engineering objective: optimize $f$ function/simulator, with lowest $f$ evaluations as possible.
+
+```{r,echo=F, warning=F, fig.height=4, fig.width=7}
+#f=function(x) 1-sin(.25+pi*x^.75)
+f=(function(x) 1-sin(-.20+3*pi*x^.85)+x/3+5*(x-.45)^2)
+#x0 = c(0.05,.5,.9)
+x0 = c(0.0, 0.3, 0.7, 1.0)
+y0 = f(x0)
+xx = seq(0,1,,100)
+
+#plot(f)
+#points(x0,y0)
+
+grey = rgb(.75,.75,.75)
+plot_f = function(xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F,lty=2,xy0=T,...) {
+    par(mar=c(1,1,1,1))
+    par(bg=NA)
+    
+    plot(0,0,type='n',xlim=c(0,1),ylim=c(min(f(xx)),max(f(xx))),xaxt=xaxt, yaxt=yaxt, ann=ann,axes=axes,frame.plot=frame.plot,...)
+    rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+    if (length(xx)!= length(f(xx))) {print(xx)
+    print(f(xx))}
+    lines(xx,f(xx),lty=lty,col='white',lwd=2,xlab="x",ylab="f(x)")
+    if (xy0) points(x0,y0,col='red',pch=20)
+}
+plot_f(lty=1,xy0=F)
+i_min_f = which.min(f(xx))
+points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+```
+
+
+
+
+## Basic idea
+
+create some $\color{blue}{models\ of\ f}$ based on few evaluations $x={X}$
+
+
+```{r,echo=F, warning=F, fig.height=4, fig.width=7}
+plot_f()
+i_min_f = which.min(f(xx))
+points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+
+if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKriging",quiet = T)
+library(DiceKriging)
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+make_km = function(n=10){
+    mx=matrix(NaN,n,length(xx))
+    for (i in 1:n) {
+        set.seed(i)
+        mx[i,] = simulate(k,nsim=1,newdata=xx,cond=T,nugget.sim=0.0000001)
+    }
+    mx
+}
+
+mx = make_km()
+for (i in 1:nrow(mx)) {
+    lines(xx,mx[i,],col='blue')
+    points(x0,y0,col='blue')
+
+    i_min = which.min(mx[i,])
+    points(xx[i_min],mx[i,i_min],col='blue',pch='x')
+}
+```
+
+
+
+## (simple) Kriging
+
+$$\color{blue}M(x) = \mathcal{N}(m(x),s^2(x))$$
+
+
+* $m(x) = C(x)^T C(X)^{-1} f(X)$
+* $s^2(x) = c(x) - C(x)^T C(X)^{-1} C(x)$
+* $C$ is the covariance kernel  $C(.) = C(X,.)$, $c(.) = C(x,.)$
+
+
+
+```{r,echo=F, warning=F, fig.height=4, fig.width=7}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+
+points(x0,y0,col='blue')
+k_x = predict.km(k,xx,"UK")
+for (p in c(3,2,1))
+    polygon(c(xx,rev(xx)),c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),col=rgb(0,0,1,.2),border=NA)
+```
+
+
+
+## Efficient Global Optimization
+
+
+
+```{r,echo=F, warning=F, fig.width=4, fig.height=3}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+
+
+</div>
+
+Let's define the _Expected Improvement_:
+
+$$\color{violet}{EI}(x) = E[(min \{ f(X) \} - M(x))^+]$$
+
+_which is (also) analytical thanks to $M$ properties..._
+
+
+
+$$u(x) = { { min \{ f(X) \} - m(x) } \over { s(x) } }$$
+
+
+
+```{r,echo=F, warning=F, fig.width=4, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+```
+
+
+
+$$\color{violet}{EI}(x) = s(x)\ \big(\ u(x)p_{\mathcal{N}}(u(x)) + d_{\mathcal{N}}(u(x))\ \big)$$
+
+
+_"Efficient Global Optimization of Expensive Black-Box Functions"_- Jones, Schonlau, Welch,  
+(Journal of Global Optimization, December 1998)
+
+EGO:  
+Maximize $EI(x)$ (*), compute $f$ there, add to $X$.  
+Repeat until ...
+
+<hr/>
+
+* __+__ good trade-off between exploration and exploitation
+* __+__ requires few evaluations of $f$
+* __-__ often lead to add close points to each others ...  
+Which is not very comfortable for kriging numerical stability
+* __-__ "one step lookahead" (myopic) strategy
+* __-__ rely on model suitability to $f$
+
+(*) using standard optimization algorithm: BFGS, PSO, DiRect, ...
+
+
+## EGO - step 0
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 1
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 2
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+
+## EGO - step 3
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+
+## EGO - step 4
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+
+## EGO - step 5
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 6
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 7
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 8
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+## EGO - step 9
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=4}
+plot_f()
+#i_min_f = which.min(f(xx))
+#points(xx[i_min_f],f(xx[i_min_f]),col='red',pch='x')
+abline(h=min(y0),col='red')
+
+k=km(design = data.frame(x=x0),response = data.frame(y=y0),coef.cov = 0.2,coef.var = .2,control=list(trace=F))
+k_x = predict.km(k,xx,"UK")
+
+points(x0,y0,col='blue')
+for (p in c(3,2,1)) {
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),max,min(y0)),col=rgb(0,0,1,.2),border=NA)
+    polygon(c(xx,rev(xx)),lapply(c(k_x$mean+k_x$sd*p,rev(k_x$mean-k_x$sd*p)),min,min(y0)),col=rgb(.8,0,.8,.2),border=NA)
+}
+```
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+par(mar=c(0,1,0,1))
+
+uxx = (min(y0)-k_x$mean)/k_x$sd
+EI_xx = k_x$sd * (uxx * pnorm(uxx) + dnorm(uxx))
+EI_xx[is.nan(EI_xx)]=0
+
+plot(0,0,type='n',xlim=c(0,1),ylim=c(0,max(EI_xx,na.rm = T)),xaxt='n', yaxt='n', ann=FALSE,axes=F,frame.plot=F)
+rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], border=NA, col = grey
+)
+
+polygon(xx,EI_xx, col=rgb(1,0,1,.5), border=NA)
+
+x0 = c(x0, xx[which(EI_xx==max(EI_xx,na.rm=T))[1]])
+y0 = f(x0)
+```
+
+
+
+
