@@ -1,6 +1,9 @@
 language: r
 pandoc_version: 1.17.2
 cache: packages
+r_packages:
+  - rgenoud
+  - rgl
 
 branches:
   only: master
