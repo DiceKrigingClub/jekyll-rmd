@@ -9,7 +9,7 @@ categories: r jekyll
 These R files contains an analytical implementation of the criterion "IECI" proposed for Optimization under unknown constraints (2010) by [Robert Gramacy and Herbert Lee](http://arxiv.org/pdf/1004.4027v2.pdf). 
 
 This implementation is based on [DiceKriging](https://cran.r-project.org/web/packages/DiceKriging/index.html) R package (CRAN version):
-```{r}
+```{r, warning=FALSE}
 if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKriging")
 
 # More robust (and expensive) EI optimization
@@ -24,9 +24,7 @@ if (!is.element("KrigInv",installed.packages())) install.packages("KrigInv")
 ```
 
 
-## R usage
-
-Objective function
+## Objective function
 
 ```{r}
 fun=function(x){-(1-1/2*(sin(12*x)/(1+x)+2*cos(7*x)*x^5+0.7))}
@@ -37,7 +35,7 @@ X=data.frame(X=matrix(c(.0,.33,.737,1),ncol=1))
 y=fun(X)
 ```
 
-Expected Improvement (EI)
+## Expected Improvement (EI)
 
 ```{r}
 par(mfrow=c(2,1))
@@ -58,7 +56,7 @@ source("https://raw.githubusercontent.com/IRSN/IECI/master/EI.R")
 plot(.xx,EI(.xx,kmi),col='blue',type='l',xlab="x",ylab="EI(x)")
 ```
 
-Expected Conditional Improvement (ECI) by Monte Carlo estimation (! slow !)
+## Expected Conditional Improvement (ECI) by Monte Carlo estimation (! slow !)
 
 ```{r}
 par(mfrow=c(2,1))
@@ -100,7 +98,7 @@ text(labels="ECI(xn,x) = E[ EI(x) | yn~Y(xn)] (x50)",x=.3,y=0.045,col='red')
 ```
 
 
-Expected Conditional Improvement (ECI) by exact calculation (! fast !)
+## Expected Conditional Improvement (ECI) by exact calculation (! fast !)
 
 ```{r}
 par(mfrow=c(2,1))
@@ -252,14 +250,26 @@ Changing variable: $t:=a+b z$,
 $$\int_{x}^{y} (a+b z) \Phi(a+b z)  e^{-\frac{z^2}{2}} dz = \int_{a+b x}^{a+b y} t \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} \frac{dt}b$$
 $$=  -\int_{a+b x}^{a+b y} -\frac{t-a}b \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt + \frac{a}{b} \int_{a+b x}^{a+b y} \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt$$
 
-   * Then, $$-\int_{a+b x}^{a+b y} -\frac{t-a}b \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt  = -b\left[ \Phi(.) e^{-\frac{(.-a)^2}{2b^2}} \right]_{a+b x}^{a+b y} + b\int_{a+b x}^{a+b y} e^{-\frac{t^2}2} e^{-\frac{(t-a)^2}{2b^2}} dt$$
-    $$ = b(\Phi(a+b x) e^{-\frac{x^2}2} -\Phi(a+b y) e^{-\frac{y^2}2}) - b^2\frac{e^{-\frac{a^2}{2(1+b^2)}}}{\sqrt{1+b^2}} \left( \Phi\left( \frac{(1+b^2)x+ab}{\sqrt{1+b^2}}   \right) - \Phi\left( \frac{(1+b^2)y+ab}{\sqrt{1+b^2}}  \right)  \right)$$
-   * And, $$\frac{a}{b} \int_{a+b x}^{a+b y} \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt = a \int_x^y \Phi(a+b z) e^{-z^2/2} dt$$
-  We use the bi-normal cumulative density approximation [@Genz1992]: 
-  $$\int_{-\infty}^y \Phi(a+b z) e^{-z^2/2} dt = \int_{-\infty}^y \int_{-\infty}^{a+b u} e^{-\frac{v^2}2} e^{-\frac{u^2}2} du dv$$
-  Changing variable $t:=v-(a+b u)$, $$= \int_{-\infty}^y \int_{-\infty}^0 e^{-\frac{(t+a+b u)^2}2} e^{-\frac{u^2}2} du dt = \Phi_2\left(\begin{pmatrix} y \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) $$
+   * Then,
+   
+$$ -\int_{a+b x}^{a+b y} -\frac{t-a}b \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt  = -b\left[ \Phi(.) e^{-\frac{(.-a)^2}{2b^2}} \right]_{a+b x}^{a+b y} + b\int_{a+b x}^{a+b y} e^{-\frac{t^2}2} e^{-\frac{(t-a)^2}{2b^2}} dt $$
+
+$$ = b(\Phi(a+b x) e^{-\frac{x^2}2} -\Phi(a+b y) e^{-\frac{y^2}2}) - b^2\frac{e^{-\frac{a^2}{2(1+b^2)}}}{\sqrt{1+b^2}} \left( \Phi\left( \frac{(1+b^2)x+ab}{\sqrt{1+b^2}}   \right) - \Phi\left( \frac{(1+b^2)y+ab}{\sqrt{1+b^2}}  \right)  \right)$$
+   * And,
+$$\frac{a}{b} \int_{a+b x}^{a+b y} \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt = a \int_x^y \Phi(a+b z) e^{-z^2/2} dt$$
+
+We use the bi-normal cumulative density approximation [@Genz1992]: 
+
+$$\int_{-\infty}^y \Phi(a+b z) e^{-z^2/2} dt = \int_{-\infty}^y \int_{-\infty}^{a+b u} e^{-\frac{v^2}2} e^{-\frac{u^2}2} du dv$$
+  
+Changing variable $t:=v-(a+b u)$,
+
+$$= \int_{-\infty}^y \int_{-\infty}^0 e^{-\frac{(t+a+b u)^2}2} e^{-\frac{u^2}2} du dt = \Phi_2\left(\begin{pmatrix} y \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) $$
+  
 and thus, 
-$$\frac{a}{b} \int_{a+b x}^{a+b y} \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt $$ $$= a  \left( \Phi_2\left(\begin{pmatrix} y \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) - \Phi_2\left(\begin{pmatrix} x \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) \right) $$
+
+$$\frac{a}{b} \int_{a+b x}^{a+b y} \Phi(t)  e^{-\frac{(t-a)^2}{2b^2}} dt $$ 
+$$= a  \left( \Phi_2\left(\begin{pmatrix} y \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) - \Phi_2\left(\begin{pmatrix} x \\ 0 \end{pmatrix}, \mu=\begin{pmatrix} 0\\-a \end{pmatrix}, \Sigma= \begin{pmatrix} 1 && -b \\ -b && 1+b^2 \end{pmatrix} \right) \right) $$
 
 
 
