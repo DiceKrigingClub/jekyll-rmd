@@ -25,12 +25,12 @@ if (!is.element("DiceOptim",installed.packages())) install.packages("DiceOptim")
 library(DiceKriging)
 packageDescription("DiceKriging")
 
-library(testthat)
+# library(testthat)
 ```
 
 # Covariance derivative (wrt. x)
 
-```{r warning=FALSE}
+```{r fig.height=6, fig.width=6, warning=FALSE}
 f = function(x) {
     x = x^4
     1-1/2*(sin(12*x)/(1+x)+2*cos(7*x)*x^5+0.7)}
@@ -42,7 +42,7 @@ plot(f)
 
 ## Checking km covariance derivative 'covVector.dx'
 
-```{r warning=FALSE}
+```{r warning=FALSE, fig.height=6, fig.width=9 }
 X <- matrix(c(0,.25,.5,.75,1.0),ncol=1)
 y <- f(X)
 
@@ -79,7 +79,7 @@ par(mfrow=c(1,1))
 
 ## Checking km _scaling_ (1 node) covariance derivative 'covVector.dx'
 
-```{r warning=FALSE}
+```{r warning=FALSE, fig.height=6, fig.width=9 }
 X <- matrix(c(0,.25,.5,.75,1.0),ncol=1)
 y <- f(X)
 
@@ -114,7 +114,7 @@ par(mfrow=c(1,1))
 
 ## Checking km _scaling_ covariance derivative 'covVector.dx'
 
-```{r warning=FALSE}
+```{r warning=FALSE, fig.height=9, fig.width=9 }
 X <- matrix(c(0,0.125,.25,0.375,.5,0.625,.75,0.875,1.0),ncol=1)
 y <- f(X)
 
@@ -150,7 +150,7 @@ par(mfrow=c(1,1))
 
 ## Checking km _affine scaling_ (no node given) covariance derivative 'covVector.dx'
 
-```{r warning=F}
+```{r warning=F, fig.height=9, fig.width=9 }
 X <- matrix(c(0,0.125,.25,0.375,.5,0.625,.75,0.875,1.0),ncol=1)
 y <- f(X)
 
@@ -250,7 +250,7 @@ EGO.nsteps = function (model, fun, nsteps, lower, upper, parinit = NULL,
 
 ## Objective function
 
-```{r}
+```{r fig.height=6, fig.width=6}
 branin = function(x) {
     x = x^.5
     DiceKriging::branin(x)
@@ -267,14 +267,14 @@ response.branin <- apply(design.fact, 1, branin)
 response.branin <- data.frame(response.branin)
 names(response.branin) <- "y"
 
-.x = seq(0,1,,31)
-.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))")
+.x = seq(0,1,,51)
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))", phi = 60,theta = 30)
 points(trans3d(design.fact[,1],design.fact[,2],response.branin$y,.p3d),col='black',pch=20) 
 ```
 
 ## Basic (no scaling)
 
-```{r}
+```{r fig.height=6, fig.width=6 }
 set.seed(123)
 
 # model identification
@@ -291,7 +291,7 @@ lower=lower, upper=upper, control=list(pop.size=20, BFGSburnin=2))
 print(oEGO$par)
 print(oEGO$value)
 
-.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))")
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))", phi = 60,theta = 30)
 points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
 points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
 ```
@@ -299,7 +299,7 @@ points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red
 
 ## With scaling
 
-```{r}
+```{r fig.height=6, fig.width=6 }
 set.seed(123)
 
 # model identification
@@ -316,7 +316,7 @@ lower=lower, upper=upper, control=list(pop.size=20, BFGSburnin=2))
 print(oEGO$par)
 print(oEGO$value)
 
-.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin")
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))", phi = 60,theta = 30)
 points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
 points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
 ```
