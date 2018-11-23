@@ -12,7 +12,16 @@ Y. Xiong, W. Chen, D. Apley, and X. Ding, Int. J. Numer. Meth. Engng, 2007
 <hr/>
 
 
-```{r}
+```{r, warning=FALSE}
+if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKriging")
+
+# More robust (and expensive) EI optimization
+if (!is.element("rgenoud",installed.packages())) install.packages("rgenoud")
+
+# Also load DiceView for easy plot
+if (!is.element("DiceOptim",installed.packages())) install.packages("DiceView")
+
+
 library(DiceKriging)
 packageDescription("DiceKriging")
 
