@@ -19,6 +19,9 @@ if (!is.element("DiceKriging",installed.packages())) install.packages("DiceKrigi
 if (!is.element("rgenoud",installed.packages())) install.packages("rgenoud")
 
 # Also load DiceView for easy plot
+if (!is.element("DiceView",installed.packages())) install.packages("DiceView")
+
+# And DiceOptim for max_EI
 if (!is.element("DiceOptim",installed.packages())) install.packages("DiceOptim")
 
 
@@ -293,7 +296,12 @@ print(oEGO$value)
 
 .p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))", phi = 60,theta = 30)
 points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
-points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
+points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20)
+```
+
+
+```{r fig.height=6, fig.width=6 }
+DiceView::sectionview.km(oEGO$lastmodel,center=oEGO$par[1,])
 ```
 
 
@@ -319,4 +327,7 @@ print(oEGO$value)
 .p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))", phi = 60,theta = 30)
 points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
 points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
+```
+```{r fig.height=6, fig.width=6 }
+DiceView::sectionview.km(oEGO$lastmodel,center=oEGO$par[1,])
 ```
