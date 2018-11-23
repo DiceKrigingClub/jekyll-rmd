@@ -1,0 +1,313 @@
+---
+title: "Covariance derivative (wrt. x) under scaling (~ warping)"
+author: "Y. Richet"
+layout: post
+date:   2018-11-22 00:00:00 +0100
+categories: r jekyll
+---
+
+_"A non-stationary covariance-based Kriging method for metamodelling in engineering design"_
+Y. Xiong, W. Chen, D. Apley, and X. Ding, Int. J. Numer. Meth. Engng, 2007
+
+<hr/>
+
+
+```{r}
+library(DiceKriging)
+packageDescription("DiceKriging")
+
+library(testthat)
+```
+
+# Covariance derivative (wrt. x)
+
+```{r warning=FALSE}
+f = function(x) {
+    x = x^4
+    1-1/2*(sin(12*x)/(1+x)+2*cos(7*x)*x^5+0.7)}
+plot(f)
+```
+
+
+
+
+## Checking km covariance derivative 'covVector.dx'
+
+```{r warning=FALSE}
+X <- matrix(c(0,.25,.5,.75,1.0),ncol=1)
+y <- f(X)
+
+set.seed(123)
+m <- km(formula=~1, design=X, response=y,scaling=F,control=list(trace=FALSE))
+print(m)
+
+# plot covariance function (of x)
+x = seq(0,1,,101) #101 because we need to have X values in x to check derivative is null
+cx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # covariance function (in 5d space)
+cdx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # derivative of covariance function
+for (i in 1:length(x)) {
+  mx = predict(m,x[i],type="SK",se.compute=T)
+  cx[,i] = covMatrix(m@covariance,rbind(X=m@X,x[i]))$C[1:length(X),1+length(X)]
+  cdx[,i] = covVector.dx(m@covariance,x=x[i],X=m@X,mx$c)
+}
+
+par(mfrow=c(2,3))
+for (j in 1:length(X)) {
+  plot(x, cx[j,], type='l',main=paste0('Covariance to X_',j))
+  abline(v=X[j,],col='blue')
+  for (i in 1:(length(x)/10))
+    arrows(x[10*i], cx[j,10*i], x[10*i]+0.1, cx[j,10*i] + cdx[j,10*i]/10,length=0.05,col='red')
+
+  ij = which(x==X[j,1])
+  testthat::test_that(desc="zero derivative at X_i",expect_true(cdx[j,ij] == 0))
+}
+par(mfrow=c(1,1))
+```
+
+
+
+
+
+## Checking km _scaling_ (1 node) covariance derivative 'covVector.dx'
+
+```{r warning=FALSE}
+X <- matrix(c(0,.25,.5,.75,1.0),ncol=1)
+y <- f(X)
+
+set.seed(123)
+m_scaling0 <- km(formula=~1, design=X, response=y,scaling=T,knots=list(design=c(.5)),control=list(trace=FALSE))
+print(m_scaling0)
+
+# plot covariance function (of x)
+x = seq(0,1,,101) #101 because we need to have X values in x to check derivative is null
+cx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # covariance function (in 5d space)
+cdx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # derivative of covariance function
+for (i in 1:length(x)) {
+  mx = predict(m_scaling0,x[i],type="SK",se.compute=T)
+  cx[,i] = covMatrix(m_scaling0@covariance,rbind(X=m_scaling0@X,x[i]))$C[1:length(X),1+length(X)]
+  cdx[,i] = covVector.dx(m_scaling0@covariance,x=x[i],X=m_scaling0@X,mx$c)
+}
+
+par(mfrow=c(2,3))
+for (j in 1:length(X)) {
+  plot(x, cx[j,], type='l',main=paste0('Covariance to X_',j))
+  abline(v=X[j,],col='blue')
+  for (i in 1:(length(x)/10))
+    arrows(x[10*i], cx[j,10*i], x[10*i]+0.1, cx[j,10*i] + cdx[j,10*i]/10,length=0.05,col='red')
+
+  ij = which(x==X[j,1])
+  test_that(desc="zero derivative at X_i",expect_true(cdx[j,ij] == 0))
+}
+par(mfrow=c(1,1))
+```
+
+
+
+## Checking km _scaling_ covariance derivative 'covVector.dx'
+
+```{r warning=FALSE}
+X <- matrix(c(0,0.125,.25,0.375,.5,0.625,.75,0.875,1.0),ncol=1)
+y <- f(X)
+
+set.seed(123)
+m_scaling <- km(formula=~1, design=X, response=y,scaling=T,knots=list(design=c(0,.5,1)),control=list(trace=FALSE))
+print(m_scaling)
+
+# plot covariance function (of x)
+x = seq(0,1,,201) #101 because we need to have X values in x to check derivative is null
+cx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # covariance function (in 5d space)
+cdx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # derivative of covariance function
+for (i in 1:length(x)) {
+  mx = predict(m_scaling,x[i],type="SK",se.compute=T)
+  cx[,i] = covMatrix(m_scaling@covariance,rbind(X=m_scaling@X,x[i]))$C[1:length(X),1+length(X)]
+  cdx[,i] = covVector.dx(m_scaling@covariance,x=x[i],X=m_scaling@X,mx$c)
+}
+
+par(mfrow=c(3,3))
+for (j in 1:length(X)) {
+  plot(x, cx[j,], type='l',main=paste0('Covariance to X_',j))
+  abline(v=X[j,],col='blue')
+  for (i in 1:(length(x)/10))
+    arrows(x[10*i], cx[j,10*i], x[10*i]+0.1, cx[j,10*i] + cdx[j,10*i]/10,length=0.05,col='red')
+
+  ij = which(x==X[j,1])
+  test_that(desc="zero derivative at X_i",expect_true(cdx[j,ij] == 0))
+}
+par(mfrow=c(1,1))
+```
+
+
+
+
+## Checking km _affine scaling_ (no node given) covariance derivative 'covVector.dx'
+
+```{r warning=F}
+X <- matrix(c(0,0.125,.25,0.375,.5,0.625,.75,0.875,1.0),ncol=1)
+y <- f(X)
+
+set.seed(123)
+m_ascaling <- km(formula=~1, design=X, response=y,scaling=T,knots=NULL,control=list(trace=FALSE))
+print(m_ascaling)
+
+# plot covariance function (of x)
+x = seq(0,1,,201) #101 because we need to have X values in x to check derivative is null
+cx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # covariance function (in 5d space)
+cdx = matrix(NaN,nrow=nrow(X),ncol=length(x)) # derivative of covariance function
+for (i in 1:length(x)) {
+  mx = predict(m_ascaling,x[i],type="SK",se.compute=T)
+  cx[,i] = covMatrix(m_ascaling@covariance,rbind(X=m_ascaling@X,x[i]))$C[1:length(X),1+length(X)]
+  cdx[,i] = covVector.dx(m_ascaling@covariance,x=x[i],X=m_ascaling@X,mx$c)
+}
+
+par(mfrow=c(3,3))
+for (j in 1:length(X)) {
+  plot(x, cx[j,], type='l',main=paste0('Covariance to X_',j))
+  abline(v=X[j,],col='blue')
+  for (i in 1:(length(x)/10))
+    arrows(x[10*i], cx[j,10*i], x[10*i]+0.1, cx[j,10*i] + cdx[j,10*i]/10,length=0.05,col='red')
+
+  ij = which(x==X[j,1])
+  test_that(desc="zero derivative at X_i",expect_true(cdx[j,ij] == 0))
+}
+par(mfrow=c(1,1))
+```
+
+
+
+
+
+# ... used with EGO
+
+
+
+```{r,echo=F, warning=F, fig.width=7, fig.height=1}
+library(DiceOptim)
+packageDescription("DiceOptim")
+```
+
+
+```{r}
+EGO.nsteps = function (model, fun, nsteps, lower, upper, parinit = NULL, 
+    control = NULL, kmcontrol = NULL) 
+{
+    n <- nrow(model@X)
+    if (is.null(kmcontrol$penalty)) 
+        kmcontrol$penalty <- model@penalty
+    if (length(model@penalty == 0)) 
+        kmcontrol$penalty <- NULL
+    if (is.null(kmcontrol$optim.method)) 
+        kmcontrol$optim.method <- model@optim.method
+    if (is.null(kmcontrol$parinit)) 
+        kmcontrol$parinit <- model@parinit
+    if (is.null(kmcontrol$control)) 
+        kmcontrol$control <- model@control
+    control$print.level = 0
+    for (i in 1:nsteps) {
+        oEGO <- max_EI(model = model, lower = lower, upper = upper, 
+            parinit = parinit, control = control)
+        model@X <- rbind(model@X, oEGO$par)
+        model@y <- rbind(model@y, fun(t(oEGO$par)))
+        kmcontrol$parinit <- covparam2vect(model@covariance)
+        kmcontrol$control$trace = FALSE
+        kmcontrol$scaling = is.element("eta",slotNames(model@covariance))
+        if (is.element("knots",slotNames(model@covariance))) kmcontrol$knots = model@covariance@knots else kmcontrol$knots = NULL
+        if (model@param.estim) {
+            model <- km(formula = model@trend.formula, design = model@X, 
+                response = model@y, covtype = model@covariance@name, 
+                lower = model@lower, upper = model@upper, nugget = NULL, 
+                penalty = kmcontrol$penalty, optim.method = kmcontrol$optim.method, 
+                parinit = kmcontrol$parinit, control = kmcontrol$control, 
+                gr = model@gr, iso = is(model@covariance, "covIso"),
+                scaling = kmcontrol$scaling, knots = kmcontrol$knots)
+        }
+        else {
+            coef.cov <- covparam2vect(model@covariance)
+            model <- km(formula = model@trend.formula, design = model@X, 
+                response = model@y, covtype = model@covariance@name, 
+                coef.trend = model@trend.coef, coef.cov = coef.cov, 
+                coef.var = model@covariance@sd2, nugget = NULL, 
+                iso = is(model@covariance, "covIso"))
+        }
+    }
+    return(list(par = model@X[(n + 1):(n + nsteps), , drop = FALSE], 
+        value = model@y[(n + 1):(n + nsteps), , drop = FALSE], 
+        npoints = 1, nsteps = nsteps, lastmodel = model))
+}
+
+```
+
+
+
+
+## Objective function
+
+```{r}
+branin = function(x) {
+    x = x^.5
+    DiceKriging::branin(x)
+}
+
+# a 9-points factorial design, and the corresponding response
+d <- 2
+n <- 9
+design.fact <- expand.grid(seq(0,1,length=3), seq(0,1,length=3))
+names(design.fact)<-c("x1", "x2")
+design.fact <- data.frame(design.fact)
+names(design.fact)<-c("x1", "x2")
+response.branin <- apply(design.fact, 1, branin)
+response.branin <- data.frame(response.branin)
+names(response.branin) <- "y"
+
+.x = seq(0,1,,31)
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))")
+points(trans3d(design.fact[,1],design.fact[,2],response.branin$y,.p3d),col='black',pch=20) 
+```
+
+## Basic (no scaling)
+
+```{r}
+set.seed(123)
+
+# model identification
+fitted.model1 <- km(~1, design=design.fact, response=response.branin,
+covtype="gauss", control=list(pop.size=50,trace=FALSE), parinit=c(0.5, 0.5))
+
+# EGO n steps
+library(rgenoud)
+nsteps <- 10 
+lower <- rep(0,d)
+upper <- rep(1,d)
+oEGO <- EGO.nsteps(model=fitted.model1, fun=branin, nsteps=nsteps,
+lower=lower, upper=upper, control=list(pop.size=20, BFGSburnin=2))
+print(oEGO$par)
+print(oEGO$value)
+
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin(sqrt(.))")
+points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
+points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
+```
+
+
+## With scaling
+
+```{r}
+set.seed(123)
+
+# model identification
+fitted.model1 <- km(~1, design=design.fact, response=response.branin,
+covtype="gauss", control=list(pop.size=50,trace=FALSE), parinit=c(0.5, 0.5), scaling = T)
+
+# EGO n steps
+library(rgenoud)
+nsteps <- 10
+lower <- rep(0,d)
+upper <- rep(1,d)
+oEGO <- EGO.nsteps(model=fitted.model1, fun=branin, nsteps=nsteps,
+lower=lower, upper=upper, control=list(pop.size=20, BFGSburnin=2))
+print(oEGO$par)
+print(oEGO$value)
+
+.p3d = persp(.x,.x,matrix(apply(expand.grid(.x,.x),1,branin),ncol=length(.x)),zlab = "branin")
+points(trans3d(oEGO$lastmodel@X[,1],oEGO$lastmodel@X[,2],apply(oEGO$lastmodel@X,1,branin),.p3d),col='black',pch=20) 
+points(trans3d(oEGO$par[,1],oEGO$par[,2],apply(oEGO$par,1,branin),.p3d),col='red',pch=20) 
+```
